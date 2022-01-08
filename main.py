@@ -21,7 +21,7 @@ class Circuit_Breaker_On_Wall(Circuit_Breaker):
         return res
 
     def closed(self):
-        if self.state == 'closed':
+        if self.state == self.State.CLOSED:
             failure_counter = 0
             while (failure_counter < self.counter_limit):
                 try:
@@ -35,30 +35,31 @@ class Circuit_Breaker_On_Wall(Circuit_Breaker):
                     failure_counter += 1
                 time.sleep((random.randint(0, 1000) / 1000))
             else:
-                self.state = "open"
+                self.state = self.State.OPEND
                 self.open()
 
     def open(self):
         if self.state == 'open':
             time.sleep(self.timout)
-            self.state = 'half_open'
+            self.state = self.State.HALF_OPEN
             self.half_open()
         else:
             raise Exception(
                 f"Wrong state invoked: {self.state}")
 
     def half_open(self):
-        if self.state == 'half_open':
+        if self.state == self.State.HALF_OPEN:
             try:
                 res = self.operation()
                 if res.status_code == self.SUCCESS_FLAG:
-                    self.state = "closed"  # yeah!
+                    self.state = self.State.CLOSED  # yeah!
                     self.closed()
                 else:
-                    self.state = "open"  # oops...
+                    self.state = self.State.OPEND  # oops...
                     self.open()
             except Exception as e:
-                self.current_state = "open"
+                self.current_state = self.State.OPEND
+
                 self.open()
 
 

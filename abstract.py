@@ -1,4 +1,5 @@
 import abc
+from enum import Enum
 
 
 class Circuit_Breaker():
@@ -8,9 +9,14 @@ class Circuit_Breaker():
     This is done through a stateful proxy (with a counter) that monitors the number of failures,
     and implements retries in a carefully designed manner.
     """
+    class State(Enum):
+        CLOSED = 1
+        OPEND = 2
+        HALF_OPEN = 3
+
     THRESHOLD = 5
     TIMEOUT = 30
-    state = "Closed"
+    state = State.CLOSED
 
     def __init__(self, counter_limit=THRESHOLD, timeout=TIMEOUT, **kwargs):
         self.counter_limit = counter_limit
