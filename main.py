@@ -1,0 +1,66 @@
+from abstract import Circuit_Breaker
+import time
+import requests
+import random
+
+
+class Circuit_Breaker_On_Wall(Circuit_Breaker):
+    SUCCESS_FLAG = 200
+
+    def __init__(self, counter_limit=6, timout=40,  **kwargs):
+        super().__init__(counter_limit, timout)
+        self.url = kwargs.get("url", None)
+        if self.url is None:
+            raise ValueError("Missing url argument")
+
+    def operation(self):
+        try:
+            res = requests.get(self.url, timeout=self.timeout)
+        except Exception as e:
+            print("Error", e)
+        return res
+
+    def closed(self):
+        if self.state == 'closed':
+            failure_counter = 0
+            while (failure_counter < self.counter_limit):
+                try:
+                    res = self.operation()
+                    resp = res.status_code
+                    if int(resp) == self.SUCCESS_FLAG:
+                        return res
+                    else:
+                        failure_counter += 1
+                except Exception as e:
+                    failure_counter += 1
+                time.sleep((random.randint(0, 1000) / 1000))
+            else:
+                self.state = "open"
+                self.open()
+
+    def open(self):
+        if self.state == 'open':
+            time.sleep(self.timout)
+            self.state = 'half_open'
+            self.half_open()
+        else:
+            raise Exception(
+                f"Wrong state invoked: {self.state}")
+
+    def half_open(self):
+        if self.state == 'half_open':
+            try:
+                res = self.operation()
+                if res.status_code == self.SUCCESS_FLAG:
+                    self.state = "closed"  # yeah!
+                    self.closed()
+                else:
+                    self.state = "open"  # oops...
+                    self.open()
+            except Exception as e:
+                self.current_state = "open"
+                self.open()
+
+
+if __name__ == "__main__":
+    cb = Circuit_Breaker_On_Wall(url="https://medium.com/new-story")
